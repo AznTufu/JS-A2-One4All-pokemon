@@ -8,6 +8,7 @@
     "dev": "node server.js"
   },
   "dependencies": {
+    "@pyroscope/nodejs": "^0.4.13",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.10.0",
     "compression": "^1.8.1",
