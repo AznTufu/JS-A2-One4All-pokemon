@@ -1,7 +1,5 @@
 "use strict"
 
-// Le serveur renvoie déjà les joueurs triés (pokédex décroissant) et le compte pré-calculé.
-// Plus de re-tri, plus de .reverse(), plus de JSON.parse du blob complet, plus de crash sous 3 joueurs.
 fetch('/api/leaderboard')
     .then(resp => resp.json())
     .then(({ records }) => {
@@ -23,6 +21,4 @@ fetch('/api/leaderboard')
             leaderboard.appendChild(userEl)
         })
     })
-    .catch(() => {
-        // le classement n'a pas pu être chargé : on n'affiche rien plutôt que de casser la page
-    })
+    .catch(() => {})

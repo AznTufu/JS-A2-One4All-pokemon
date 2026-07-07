@@ -7,7 +7,6 @@ const compression = require('compression')
 const rateLimit = require('express-rate-limit')
 const Database = require('better-sqlite3')
 
-// --- Profiling continu Grafana Pyroscope (optionnel : activé seulement si PYROSCOPE_SERVER est défini) ---
 let Pyroscope = null
 if (process.env.PYROSCOPE_SERVER) {
   try {
@@ -59,15 +58,12 @@ db.exec(`
 app.use(compression({ threshold: 1024 }))
 app.use(express.json({ limit: '1mb' }))
 
-// Statiques servis dossier par dossier avec cache long.
-// (remplace express.static(__dirname) qui exposait publiquement data/poke-bicrave.sqlite, server.js et package.json)
 const STATIC_OPTS = { maxAge: '30d' }
 app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_OPTS))
 app.use('/css', express.static(path.join(__dirname, 'css'), STATIC_OPTS))
 app.use('/js', express.static(path.join(__dirname, 'js'), { maxAge: '1h' }))
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')))
 
-// Limiteurs de débit : protège les routes coûteuses (bcrypt) et l'API en général.
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false })
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false })
 app.use('/api/', apiLimiter)
@@ -155,7 +151,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
     return res.status(409).json({ error: 'user_exists' })
   }
 
-  const passwordHash = await bcrypt.hash(password, 10) // async : ne bloque plus l'event loop
+  const passwordHash = await bcrypt.hash(password, 10)
   const data = JSON.stringify(defaultUserData())
   const info = db.prepare('INSERT INTO users (username, password_hash, data) VALUES (?, ?, ?)').run(username, passwordHash, data)
   const user = db.prepare('SELECT id, username, data, created_at FROM users WHERE id = ?').get(info.lastInsertRowid)
@@ -176,7 +172,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
   }
 
   const user = db.prepare('SELECT id, username, password_hash, data, created_at FROM users WHERE username = ?').get(username)
-  const ok = user && (await bcrypt.compare(password, user.password_hash)) // async : threadpool, event loop libre
+  const ok = user && (await bcrypt.compare(password, user.password_hash))
   if (!ok) {
     return res.status(401).json({ error: 'invalid_credentials' })
   }
@@ -201,7 +197,7 @@ app.put('/api/me', authRequired, (req, res) => {
   const nextData = req.body.data || currentData
 
   db.prepare('UPDATE users SET data = ? WHERE id = ?').run(JSON.stringify(nextData), req.user.id)
-  invalidateLeaderboard() // le classement a pu changer : le prochain GET recalculera
+  invalidateLeaderboard()
 
   const updatedUser = db.prepare('SELECT id, username, data, created_at FROM users WHERE id = ?').get(req.user.id)
 
@@ -212,7 +208,6 @@ app.put('/api/me', authRequired, (req, res) => {
   })
 })
 
-// --- Cache applicatif en mémoire pour le leaderboard (route publique, identique pour tous) ---
 const LEADERBOARD_TTL_MS = 60_000
 let leaderboardCache = { body: null, expiresAt: 0 }
 const invalidateLeaderboard = () => {
@@ -220,7 +215,6 @@ const invalidateLeaderboard = () => {
 }
 
 function buildLeaderboard() {
-  // json_array_length compte le pokédex côté SQL (plus aucun JSON.parse en JS), tri DESC + LIMIT côté base
   const rows = db.prepare(`
     SELECT username,
            COALESCE(json_array_length(data, '$.pokemons.pokedex'), 0) AS pokedexCount
@@ -240,10 +234,9 @@ app.get('/api/leaderboard', (_req, res) => {
   }
   res.set('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300')
   res.set('X-Cache', hit ? 'HIT' : 'MISS')
-  res.type('application/json').send(leaderboardCache.body) // chaîne pré-sérialisée : ~0,01 ms sur un HIT
+  res.type('application/json').send(leaderboardCache.body)
 })
 
-// 404 propres (au lieu de renvoyer 200 + index.html pour toute URL inexistante)
 app.use('/api', (_req, res) => res.status(404).json({ error: 'not_found' }))
 app.use((_req, res) => res.status(404).type('text/plain').send('Not Found'))
 

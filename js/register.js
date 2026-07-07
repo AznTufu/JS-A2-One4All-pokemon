@@ -3,7 +3,6 @@
 if(!(localStorage.getItem('token') && localStorage.getItem('user'))) document.querySelector('.log-bg').style.display = "grid"
 else {
     player = new Player(JSON.parse(localStorage.getItem('user')))
-    // Lecture seule (GET) au chargement au lieu d'un PUT : plus d'écriture SQL à chaque visite.
     player.refresh()
     .then(() => {
         player.fixFields()
@@ -11,17 +10,15 @@ else {
         player.updatePc()
     })
     .catch(() => {
-        // token invalide/expiré : on redemande une connexion
         document.querySelector('.log-bg').style.display = "grid"
     })
 }
 
-// Callback commun register/login : une seule instanciation de Player (au lieu de deux).
 function handleAuthSuccess(resp, successMessage, errorSelector) {
     localStorage.setItem('token', resp.token)
     player = new Player({ ...resp.user, token: resp.token })
-    player.store()      // persiste dans localStorage (met fields.data en chaîne)
-    player.fixFields()  // reparse pour l'affichage
+    player.store()
+    player.fixFields()
     player.setup()
     player.updatePokedex()
 

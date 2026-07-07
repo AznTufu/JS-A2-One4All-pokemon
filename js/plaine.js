@@ -19,7 +19,6 @@ async function summonPokemon() {
 	pokemon.style.width = '96px'
 	let pokemonId = (getRandomInt(151) + 1).toString()
 
-	// Nom récupéré depuis la liste en cache (getPokedexList, pokedex.js) : plus de fetch du JSON détail (~378 Ko parsés)
 	const list = await getPokedexList()
 	const entry = list.find(p => p.id === pokemonId) || { id: pokemonId, name: `pokemon-${pokemonId}` }
 	const shiny = Math.random() > 0.8
@@ -33,7 +32,6 @@ async function summonPokemon() {
 	pokemon.style.left = `${(getRandomInt(playground.clientWidth - 96) / playground.clientWidth) * 100}%`
 
 	pokemon.addEventListener("dragover", (event) => {
-		// prevent default to allow drop
 		event.preventDefault()
 	}, false)
 
@@ -70,9 +68,8 @@ function reloadBall() {
 	ballEl.id = 'A' + uuidv4()
 
 	ballEl.addEventListener("dragstart", (event) => {
-		// store a ref. on the dragged elem
 		dragged = event.target
-		ballDiff = ballReturn.difficulty	// make it half transparent
+		ballDiff = ballReturn.difficulty
 		event.target.classList.add("dragging")
 		dragId = ballEl.id
 	})
@@ -127,12 +124,6 @@ document.querySelector('#playground__pokedex__toggle').checked = false
 reloadBall()
 
 let dragged
-
-// Pas d'invocation automatique au chargement (RGESN 4.1) : le joueur déclenche
-// l'apparition via le bouton « Faire apparaitre un pokemon aléatoire ».
-
-
-// QTE
 
 async function generateQTE(difficulty) {
 	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'

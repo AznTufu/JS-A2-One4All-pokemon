@@ -5,7 +5,6 @@ class Player {
 		this.token = data.token || localStorage.getItem('token') || ''
 		this.fields = {}
 		this.fields.username = data.fields.username
-		// data.fields.data arrive toujours en chaîne JSON (localStorage ou API) -> parse = copie fraîche, pas de clone superflu
 		this.fields.data = typeof data.fields.data === 'string' ? JSON.parse(data.fields.data) : data.fields.data
 	}
 
@@ -47,7 +46,6 @@ class Player {
 		this.store()
 	}
 
-	// Rafraîchit les données depuis le serveur en LECTURE (GET), sans écriture SQL inutile à chaque visite.
 	async refresh() {
 		let response = await fetch('/api/me', {
 			headers: { 'Authorization': `Bearer ${this.token}` }
@@ -77,7 +75,7 @@ class Player {
 		this.fields.data.balance += 100
 		await this.updateUser()
 		this.fixFields()
-		this.updatePc() // re-rend la liste : évite de vendre le mauvais Pokémon (index périmé après splice)
+		this.updatePc()
 	}
 
 	updatePc() {
@@ -109,7 +107,7 @@ class Player {
 
 			let pp = document.createElement('img')
 			pp.src = pkm.url
-			pp.alt = '' // décorative : le nom est déjà dans le span adjacent
+			pp.alt = ''
 			pp.height = 48
 
 			li.appendChild(id)
