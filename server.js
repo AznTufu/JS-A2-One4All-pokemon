@@ -8,7 +8,7 @@ const Database = require('better-sqlite3')
 const app = express()
 const PORT = process.env.PORT || 3000
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me'
-const dbDir = path.join(__dirname, 'data')
+const dbDir = process.env.DB_DIR || path.join(__dirname, 'data')
 const dbPath = path.join(dbDir, 'poke-bicrave.sqlite')
 
 fs.mkdirSync(dbDir, { recursive: true })
