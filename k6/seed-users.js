@@ -1,7 +1,3 @@
-// Peuple la base SQLite avec N joueurs réalistes pour donner du poids au test de charge.
-// Usage : node k6/seed-users.js [nombre=1000]
-// Insère directement en base (un seul hash bcrypt réutilisé : passer par /api/register
-// coûterait ~100-200 ms de CPU bloquant PAR compte avec bcryptjs).
 const path = require('path')
 const Database = require('better-sqlite3')
 const bcrypt = require('bcryptjs')
