@@ -29,7 +29,6 @@ if (process.env.PYROSCOPE_SERVER) {
 
 const app = express()
 app.disable('x-powered-by')
-if (Pyroscope) app.use(Pyroscope.expressMiddleware())
 
 const PORT = process.env.PORT || 3000
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me'
