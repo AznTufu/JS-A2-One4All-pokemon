@@ -10,19 +10,25 @@ function uuidv4() {
 	)
 }
 
-async function summonPokemon() {
-	// let pokemon = document.createElement('img')
-	// pokemon.src = '/assets/images/placeholders/1.png'
+const wildSpriteUrl = (id, shiny) =>
+	`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${shiny ? 'shiny/' : ''}${id}.png`
 
+async function summonPokemon() {
 	let pokemon = document.createElement('div')
 	pokemon.style.height = '96px'
 	pokemon.style.width = '96px'
 	let pokemonId = (getRandomInt(151) + 1).toString()
-	let data = await fetch('https://pokeapi.co/api/v2/pokemon/' + pokemonId)
-	let pkmData = await data.json()
-	await (Math.random() > 0.8) ? pokemon.style.background = `url(\'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemonId}.png\')` : pokemon.style.background = `url(\'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png\')`
 
+	// Nom récupéré depuis la liste en cache (getPokedexList, pokedex.js) : plus de fetch du JSON détail (~378 Ko parsés)
+	const list = await getPokedexList()
+	const entry = list.find(p => p.id === pokemonId) || { id: pokemonId, name: `pokemon-${pokemonId}` }
+	const shiny = Math.random() > 0.8
+	const pkmData = { id: entry.id, name: entry.name, sprites: { front_default: wildSpriteUrl(pokemonId, false) } }
+
+	pokemon.style.background = `url('${wildSpriteUrl(pokemonId, shiny)}')`
 	pokemon.classList = 'pokemon'
+	pokemon.setAttribute('role', 'img')
+	pokemon.setAttribute('aria-label', entry.name)
 	pokemon.style.top = `${(getRandomInt(playground.clientHeight - 96) / playground.clientHeight) * 100}%`
 	pokemon.style.left = `${(getRandomInt(playground.clientWidth - 96) / playground.clientWidth) * 100}%`
 
@@ -49,37 +55,17 @@ async function summonPokemon() {
 	playground.appendChild(pokemon)
 }
 
-function AddPokemonToPc() {
-	// for dev only
-	let pokemonId = '395'
-	let pokemonSellPriceBase = 100
-	// for dev only
-
-	let pokemonEl = document.createElement('img')
-	(Math.random() > 0.8) ? pokemonEl.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemonId}.png` : pokemonEl.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`
-
-	pokemonEl.addEventListener('click', () => {
-		user.balance += pokemonSellPriceBase
-		pokemonEl.remove()
-		console.log('user balance', user.balance)
-	})
-
-	pc.appendChild(pokemonEl)
-
-}
-
 function reloadBall() {
 	let ballsArray = []
 	user.upgrade.balls.reverse().forEach(ball => {
 		for (let i = 0; i < ball.lvl * 5; i++) ballsArray.push(ball)
 	})
-	console.log(ballsArray)
-
 
 	let ballReturn = ballsArray[getRandomInt(99)]
 	let ballEl = document.createElement('img')
 	ballEl.classList = "ball"
 	ballEl.src = ballReturn.sprite
+	ballEl.alt = ballReturn.name
 	ballEl.draggable = true
 	ballEl.id = 'A' + uuidv4()
 
@@ -88,7 +74,6 @@ function reloadBall() {
 		dragged = event.target
 		ballDiff = ballReturn.difficulty	// make it half transparent
 		event.target.classList.add("dragging")
-		// event.dataTransfer.setData('text/plain', ballEl.id)
 		dragId = ballEl.id
 	})
 
@@ -96,23 +81,6 @@ function reloadBall() {
 		ballEl.style.top = 'auto'
 	})
 
-	// ballEl.addEventListener("mousedown", (event) => {
-	// 	isDragging = true
-	// 	ballEl.style.pointerEvents = "none"
-	// 	console.log(isDragging)
-	// })
-	// window.addEventListener("mouseup", (event) => {
-	// 	isDragging = false
-	// 	ballEl.style.pointerEvents = "auto"
-	// 	console.log(isDragging)
-	// })
-	// window.addEventListener('mousemove', function(event) {
-	// 	if (isDragging) {
-	// 		console.log('drag')
-	// 		ballEl.style.top = event.clientY - 48 + 'px'
-	// 		ballEl.style.left = event.clientX - 48 + 'px'
-	// 	}
-	//   })
 	playground.appendChild(ballEl)
 }
 
@@ -120,7 +88,6 @@ const playground = document.querySelector('.playground')
 const pc = document.querySelector('.captured__pokemons__ul')
 const pokedex = document.querySelector('.pokedex__pokemons__ul')
 const leaderboard = document.querySelector('.leaderboard__pokemons__ul')
-const ball = document.querySelector('.ball')
 let player
 let dragId
 let ballDiff
@@ -157,20 +124,12 @@ let user = {
 document.querySelector('#playground__captured__toggle').checked = false
 document.querySelector('#playground__pokedex__toggle').checked = false
 
-// for dev only
-const addPokemonBtn = document.querySelector('.addPokemonBtn')
-
-
 reloadBall()
 
 let dragged
-let isDragging = false
 
-
-
-
-
-summonPokemon()
+// Pas d'invocation automatique au chargement (RGESN 4.1) : le joueur déclenche
+// l'apparition via le bouton « Faire apparaitre un pokemon aléatoire ».
 
 
 // QTE
@@ -210,9 +169,9 @@ async function generateQTE(difficulty) {
 			break
 	}
 
-	//console.log(result)
 	const qteInDom = document.querySelector('.qte')
 	const letters = document.querySelectorAll('.qte-letter')
+	const previousFocus = document.activeElement
 	let nLetter = 0
 	let fails = 0
 	let sLose = 0
@@ -254,7 +213,7 @@ async function generateQTE(difficulty) {
 		setTimeout(() => {
 			document.removeEventListener('keydown', handleKeydown)
 			document.querySelector('.qte').remove()
-			//console.log('temps écoulé')
+			if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus()
 			resolve([new Date().getTime() / 1000, sLose, sWin])
 		}, timer)
 	})
@@ -263,8 +222,5 @@ async function generateQTE(difficulty) {
 
 async function resultsQTE(diff) {
 	const cs = await generateQTE(diff)
-	console.log(cs)
 	return !(cs[1] != 0 || cs[2] == 0 || cs[2] > cs[0])
 }
-
-
