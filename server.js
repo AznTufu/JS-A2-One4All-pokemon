@@ -7,6 +7,9 @@ const compression = require('compression')
 const rateLimit = require('express-rate-limit')
 const Database = require('better-sqlite3')
 
+process.on('unhandledRejection', (err) => console.error('unhandledRejection:', err))
+process.on('uncaughtException', (err) => console.error('uncaughtException:', err))
+
 let Pyroscope = null
 if (process.env.PYROSCOPE_SERVER) {
   try {
