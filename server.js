@@ -55,6 +55,31 @@ db.exec(`
   )
 `)
 
+const SEED_USERS = parseInt(process.env.SEED_USERS || '0', 10)
+if (SEED_USERS > 0) {
+  const { c } = db.prepare('SELECT COUNT(*) AS c FROM users').get()
+  if (c < SEED_USERS) {
+    const passwordHash = bcrypt.hashSync('seed-password', 10)
+    const makeData = () => {
+      const count = Math.floor(Math.random() * 60)
+      const seen = new Set()
+      while (seen.size < count) seen.add(Math.floor(Math.random() * 151) + 1)
+      const pokedex = [...seen].map((id) => ({
+        id: String(id),
+        name: `pokemon-${id}`,
+        url: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
+      }))
+      const pc = pokedex.flatMap((p) => Array(1 + Math.floor(Math.random() * 4)).fill(p.id))
+      return JSON.stringify({ balance: Math.floor(Math.random() * 5000), upgrade: { balls: [] }, pokemons: { pc, pokedex } })
+    }
+    const insert = db.prepare('INSERT OR IGNORE INTO users (username, password_hash, data) VALUES (?, ?, ?)')
+    db.transaction(() => {
+      for (let i = c; i < SEED_USERS; i++) insert.run(`seed_user_${i}`, passwordHash, makeData())
+    })()
+    console.log(`Seed: base peuplée à ${SEED_USERS} joueurs.`)
+  }
+}
+
 app.use(compression({ threshold: 1024 }))
 app.use(express.json({ limit: '1mb' }))
 
