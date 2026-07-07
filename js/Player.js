@@ -3,13 +3,15 @@ class Player {
 		console.log(data)
 		this.id = data.id
 		this.createdTime = data.createdTime
+		this.token = data.token || localStorage.getItem('token') || ''
 		// this.fields = JSON.parse(data.fields)
 		this.fields = {}
 		this.fields.password = data.fields.password
 		this.fields.username = data.fields.username
-		console.log(JSON.parse(data.fields.data))
-		let a = JSON.parse(data.fields.data)
-		this.fields.data = JSON.parse(JSON.stringify(JSON.parse(data.fields.data)))
+		const parsedData = typeof data.fields.data === 'string' ? JSON.parse(data.fields.data) : data.fields.data
+		console.log(parsedData)
+		let a = parsedData
+		this.fields.data = JSON.parse(JSON.stringify(parsedData))
 		console.log("CREATION PLAYER", this)
 	}
 
@@ -25,6 +27,7 @@ class Player {
 		localStorage.setItem('user', JSON.stringify({
 			id: this.id,
 			createdTime: this.createdTime,
+			token: this.token,
 			fields: {
 				password: this.fields.password,
 				username: this.fields.username,
@@ -34,18 +37,14 @@ class Player {
 	}
 
 	async updateUser() {
-		let response = await fetch(`https://api.airtable.com/v0/app1m0A2sG5NrkwN9/tblbumoNEm0DncWNV/${this.id}`, {
+		let response = await fetch('/api/me', {
 			method: 'PUT',
 			headers: {
-				'Authorization': `Bearer keyw099gr1SCsTfU8`,
+				'Authorization': `Bearer ${this.token}`,
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				"fields": {
-					"username" : this.fields.username,
-					"password" : this.fields.password,
-					"data" : JSON.stringify(this.fields.data),
-				}
+				data: this.fields.data
 			})
 		})
 		let data = await response.json()
@@ -55,7 +54,8 @@ class Player {
 		// 	this.store()
 		// })
 
-		this.fields.data = JSON.parse(data.fields.data)
+		this.token = data.token || this.token
+		this.fields.data = JSON.parse(data.user.fields.data)
 		console.log(this.fields.data)
 		this.store()
 	}

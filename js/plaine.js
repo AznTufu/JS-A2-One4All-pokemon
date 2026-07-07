@@ -183,7 +183,7 @@ async function generateQTE(difficulty) {
 	qte.classList.add('qte')
 	qte.tabIndex = 0
 
-	for (let i = 0; i < 8; i++) {
+	for (let i = 0; i < 5; i++) {
 		let letter = document.createElement('span')
 		letter.classList.add('qte-letter')
 		let currentLetter = characters.charAt(Math.floor(Math.random() * characters.length))
@@ -217,42 +217,42 @@ async function generateQTE(difficulty) {
 	let fails = 0
 	let sLose = 0
 	let sWin = 0
-	qteInDom.focus()
-	qteInDom.addEventListener("keydown", e => {
-		if (!letters[nLetter].classList.contains('lose') || !letters[nLetter].classList.contains('win')) {
-			//console.log(e.key.toLowerCase(), result[nLetter].toLowerCase())
-			if (e.key.toLowerCase() === result[nLetter].toLowerCase()) {
-				//console.log('oképourtoi')
-				letters[nLetter].style.color = "#3c5aa6"
-				letters[nLetter].classList.remove('wrong')
-				nLetter++
-				
-			} else {
-
-				letters[nLetter].classList.add('wrong')
-				fails++
-				//console.log('non')
-			}
-			if (nLetter == result.length) {
-				//console.log('bienouèj')
-				sWin = new Date().getTime() / 1000
-				letters.forEach(l => {
-					l.style.color = "rgb(14, 212, 14)"
-				})
-
-			} else if (fails - 1 == failsN) {
-				//console.log('dommagelartiste')
-				letters[nLetter].classList.remove('wrong')
-				letters.forEach(l => {
-					l.classList.add("lose")
-				})
-				sLose = new Date().getTime() / 1000
-			}
+	const handleKeydown = (e) => {
+		if (nLetter >= result.length || letters[nLetter].classList.contains('lose') || letters[nLetter].classList.contains('win')) {
+			return
 		}
 
-	})
+		if (e.key.toLowerCase() === result[nLetter].toLowerCase()) {
+			letters[nLetter].style.color = "#3c5aa6"
+			letters[nLetter].classList.remove('wrong')
+			nLetter++
+		} else {
+			letters[nLetter].classList.add('wrong')
+			fails++
+		}
+
+		if (nLetter == result.length) {
+			sWin = new Date().getTime() / 1000
+			letters.forEach(l => {
+				l.style.color = "rgb(14, 212, 14)"
+			})
+			document.removeEventListener('keydown', handleKeydown)
+
+		} else if (fails - 1 == failsN) {
+			letters[nLetter].classList.remove('wrong')
+			letters.forEach(l => {
+				l.classList.add("lose")
+			})
+			sLose = new Date().getTime() / 1000
+			document.removeEventListener('keydown', handleKeydown)
+		}
+	}
+
+	requestAnimationFrame(() => qteInDom.focus())
+	document.addEventListener("keydown", handleKeydown)
 	return new Promise(resolve => {
 		setTimeout(() => {
+			document.removeEventListener('keydown', handleKeydown)
 			document.querySelector('.qte').remove()
 			//console.log('temps écoulé')
 			resolve([new Date().getTime() / 1000, sLose, sWin])

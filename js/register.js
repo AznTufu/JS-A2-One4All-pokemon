@@ -1,6 +1,6 @@
 "use strict"
 
-if(!(localStorage.getItem('username') && localStorage.getItem('password') && localStorage.getItem('user'))) document.querySelector('.log-bg').style.display = "grid"
+if(!(localStorage.getItem('token') && localStorage.getItem('user'))) document.querySelector('.log-bg').style.display = "grid"
 else {
     player = new Player(JSON.parse(localStorage.getItem('user')))
     player.updateUser()
@@ -16,78 +16,34 @@ document.querySelector('.logs .register #register__register').addEventListener('
     let username = document.querySelector('#register__username').value
     let password = document.querySelector('#register__password').value
 
-    fetch(`https://api.airtable.com/v0/app1m0A2sG5NrkwN9/tblbumoNEm0DncWNV?filterByFormula=IF({username} = "${username}", TRUE(), FALSE())`, {
+    fetch('/api/register', {
+        method: 'POST',
         headers: {
-            'Authorization': `Bearer keyw099gr1SCsTfU8`
-        }
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
     })
-    .then(resp => resp.json())
-    .then(resp => {
-        console.log("ouesh", resp)
-        if(resp.records.length > 0) {
-            document.querySelector('.logs .register .error').textContent = "user already exist"
-        } else {
-            fetch(`https://api.airtable.com/v0/app1m0A2sG5NrkwN9/tblbumoNEm0DncWNV`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer keyw099gr1SCsTfU8`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    "fields": {
-                        "username": username,
-                        "password": password,
-                        "data": JSON.stringify({
-                            balance: 0,
-                            upgrade: {
-                                balls: [
-                                    {
-                                        name: "PokeBall",
-                                        lvl: 20,
-                                        basePrice: 0,
-                                        sprite: '/assets/images/balls/PokeBall.png',
-                                        difficulty : 3
-                                    },
-                                    {
-                                        name: "SuperBall",
-                                        lvl: 0,
-                                        basePrice: 100,
-                                        sprite: '/assets/images/balls/SuperBall.png',
-                                        difficulty : 2
-                                    },
-                                    {
-                                        name: "HyperBall",
-                                        lvl: 2,
-                                        basePrice: 1000,
-                                        sprite: '/assets/images/balls/HyperBall.png',
-                                        difficulty : 1
-                                    },
-                                ]
-                            },
-                            pokemons: {
-                                pc: [],
-                                pokedex: []
-                            }
-                        })
-                    }
-                })
-            })
-            .then(resp => resp.json())
-            .then(resp => {
-                console.log(resp)
-                localStorage.setItem('username', username)
-                localStorage.setItem('password', password)
-                player = new Player(resp)
-                player.store()
-                player = new Player(JSON.parse(localStorage.getItem('user')))
-                player.setup()
-
-                document.querySelector('.logs .register .error').textContent = "user created"
-                setTimeout(() => {
-                    document.querySelector('.log-bg').style.display = "none"
-                }, 1000)
-            })
+    .then(async resp => {
+        if (!resp.ok) {
+            const error = await resp.json().catch(() => ({}))
+            throw error
         }
+        return resp.json()
+    })
+    .then(resp => {
+        localStorage.setItem('token', resp.token)
+        player = new Player({ ...resp.user, token: resp.token })
+        player.store()
+        player = new Player(JSON.parse(localStorage.getItem('user')))
+        player.setup()
+
+        document.querySelector('.logs .register .error').textContent = "user created"
+        setTimeout(() => {
+            document.querySelector('.log-bg').style.display = "none"
+        }, 1000)
+    })
+    .catch(() => {
+        document.querySelector('.logs .register .error').textContent = "user already exist"
     })
 })
 
@@ -95,27 +51,32 @@ document.querySelector('.logs .login #login__login').addEventListener('click', (
     let username = document.querySelector('#login__username').value
     let password = document.querySelector('#login__password').value
 
-    fetch(`https://api.airtable.com/v0/app1m0A2sG5NrkwN9/tblbumoNEm0DncWNV?filterByFormula=AND(IF({username} = "${username}", TRUE(), FALSE()),IF({password} = "${password}", TRUE(), FALSE()))`, {
+    fetch('/api/login', {
+        method: 'POST',
         headers: {
-            'Authorization': `Bearer keyw099gr1SCsTfU8`
-        }
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
     })
-    .then(resp => resp.json())
-    .then(resp => {
-        if(resp.records.length === 0) {
-            document.querySelector('.logs .login .error').textContent = "Unknow user or password"
-        } else {
-            localStorage.setItem('username', username)
-            localStorage.setItem('password', password)
-            player = new Player(resp.records[0])
-            player.store()
-            player = new Player(JSON.parse(localStorage.getItem('user')))
-            player.setup()
-
-            document.querySelector('.logs .login .error').textContent = "Connected"
-            setTimeout(() => {
-                document.querySelector('.log-bg').style.display = "none"
-            }, 1000)
+    .then(async resp => {
+        if (!resp.ok) {
+            throw await resp.json().catch(() => ({}))
         }
+        return resp.json()
+    })
+    .then(resp => {
+        localStorage.setItem('token', resp.token)
+        player = new Player({ ...resp.user, token: resp.token })
+        player.store()
+        player = new Player(JSON.parse(localStorage.getItem('user')))
+        player.setup()
+
+        document.querySelector('.logs .login .error').textContent = "Connected"
+        setTimeout(() => {
+            document.querySelector('.log-bg').style.display = "none"
+        }, 1000)
+    })
+    .catch(() => {
+        document.querySelector('.logs .login .error').textContent = "Unknow user or password"
     })
 })

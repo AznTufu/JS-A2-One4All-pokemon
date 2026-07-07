@@ -6,9 +6,30 @@ Le but du jeux est de captuer des pokemon qui sont générer aléatoirement et q
 
 - Requête vers "Pokeapi"
 - QTE 
-- Airtable 
+- API REST locale pour l'authentification et le leaderboard 
 - Géneration aléatoire d'un pokemon 
 - Géneration endroit aléatoire dans la fenetre
+
+## Stack technique proposée
+
+### Frontend :
+
+- HTML / CSS / JavaScript vanilla
+- SCSS pour la feuille de style source
+- DOM natif et API Fetch
+
+### Backend :
+
+- Node.js avec Express.js
+- SQLite avec better-sqlite3
+- JSON Web Token avec jsonwebtoken
+- bcryptjs pour le hash des mots de passe
+
+### Lancer le projet :
+
+- Installer les dépendances avec `npm install`
+- Lancer le serveur avec `npm start`
+- Ouvrir `http://localhost:3000`
 
 ## Comment essayer le jeux 
  - Cloner le projet dans votre PC

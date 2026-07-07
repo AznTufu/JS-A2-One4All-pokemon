@@ -1,8 +1,4 @@
-fetch(`https://api.airtable.com/v0/app1m0A2sG5NrkwN9/tblbumoNEm0DncWNV`, {
-    headers: {
-        'Authorization': `Bearer keyw099gr1SCsTfU8`
-    }
-})
+fetch('/api/leaderboard')
 .then(resp => resp.json())
 .then(resp => {
     console.log(resp.records)
