@@ -197,7 +197,6 @@ app.put('/api/me', authRequired, (req, res) => {
   const nextData = req.body.data || currentData
 
   db.prepare('UPDATE users SET data = ? WHERE id = ?').run(JSON.stringify(nextData), req.user.id)
-  invalidateLeaderboard()
 
   const updatedUser = db.prepare('SELECT id, username, data, created_at FROM users WHERE id = ?').get(req.user.id)
 
@@ -208,33 +207,27 @@ app.put('/api/me', authRequired, (req, res) => {
   })
 })
 
-const LEADERBOARD_TTL_MS = 60_000
-let leaderboardCache = { body: null, expiresAt: 0 }
-const invalidateLeaderboard = () => {
-  leaderboardCache = { body: null, expiresAt: 0 }
-}
-
-function buildLeaderboard() {
-  const rows = db.prepare(`
-    SELECT username,
-           COALESCE(json_array_length(data, '$.pokemons.pokedex'), 0) AS pokedexCount
-    FROM users
-    ORDER BY pokedexCount DESC
-    LIMIT 50
-  `).all()
-  return JSON.stringify({
-    records: rows.map((r, index) => ({ id: index + 1, fields: { username: r.username, pokedexCount: r.pokedexCount } })),
-  })
-}
-
+// VERSION "AVANT" (branche profiling-before) : volontairement naïve et énergivore.
+// Recalcul à CHAQUE requête, aucun cache : SELECT de toutes les lignes,
+// JSON.parse par joueur puis tri en JavaScript. C'est ce que le flamegraph
+// Pyroscope doit montrer comme coûteux avant l'optimisation.
 app.get('/api/leaderboard', (_req, res) => {
-  const hit = leaderboardCache.body && Date.now() < leaderboardCache.expiresAt
-  if (!hit) {
-    leaderboardCache = { body: buildLeaderboard(), expiresAt: Date.now() + LEADERBOARD_TTL_MS }
-  }
-  res.set('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300')
-  res.set('X-Cache', hit ? 'HIT' : 'MISS')
-  res.type('application/json').send(leaderboardCache.body)
+  const users = db.prepare('SELECT id, username, data, created_at FROM users').all()
+  const leaderboard = users
+    .map((user) => {
+      let parsedData = defaultUserData()
+      try {
+        parsedData = JSON.parse(user.data)
+      } catch (error) {
+        parsedData = defaultUserData()
+      }
+      return { name: user.username, data: parsedData }
+    })
+    .sort((a, b) => a.data.pokemons.pokedex.length - b.data.pokemons.pokedex.length)
+
+  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+  res.set('X-Cache', 'MISS')
+  res.json({ records: leaderboard.map((entry, index) => ({ id: index + 1, fields: { username: entry.name, data: JSON.stringify(entry.data) } })) })
 })
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'not_found' }))
