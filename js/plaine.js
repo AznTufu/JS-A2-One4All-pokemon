@@ -78,6 +78,47 @@ function reloadBall() {
 		ballEl.style.top = 'auto'
 	})
 
+	ballEl.style.touchAction = 'none'
+	let touchDragging = false
+
+	const resetBallPosition = () => {
+		ballEl.style.position = ''
+		ballEl.style.left = ''
+		ballEl.style.top = ''
+	}
+
+	ballEl.addEventListener("touchstart", (event) => {
+		dragged = ballEl
+		ballDiff = ballReturn.difficulty
+		dragId = ballEl.id
+		touchDragging = true
+		ballEl.classList.add("dragging")
+	}, { passive: true })
+
+	ballEl.addEventListener("touchmove", (event) => {
+		if (!touchDragging) return
+		event.preventDefault()
+		const touch = event.touches[0]
+		ballEl.style.position = 'fixed'
+		ballEl.style.left = `${touch.clientX - ballEl.offsetWidth / 2}px`
+		ballEl.style.top = `${touch.clientY - ballEl.offsetHeight / 2}px`
+	}, { passive: false })
+
+	ballEl.addEventListener("touchend", (event) => {
+		if (!touchDragging) return
+		touchDragging = false
+		ballEl.classList.remove("dragging")
+		const touch = event.changedTouches[0]
+		ballEl.style.pointerEvents = 'none'
+		const target = document.elementFromPoint(touch.clientX, touch.clientY)
+		ballEl.style.pointerEvents = ''
+		resetBallPosition()
+		const pokemonEl = target && target.closest('.pokemon')
+		if (pokemonEl) {
+			pokemonEl.dispatchEvent(new Event('drop'))
+		}
+	})
+
 	playground.appendChild(ballEl)
 }
 
@@ -160,19 +201,18 @@ async function generateQTE(difficulty) {
 			break
 	}
 
-	const qteInDom = document.querySelector('.qte')
 	const letters = document.querySelectorAll('.qte-letter')
 	const previousFocus = document.activeElement
 	let nLetter = 0
 	let fails = 0
 	let sLose = 0
 	let sWin = 0
-	const handleKeydown = (e) => {
-		if (nLetter >= result.length || letters[nLetter].classList.contains('lose') || letters[nLetter].classList.contains('win')) {
-			return
-		}
+	let finished = false
 
-		if (e.key.toLowerCase() === result[nLetter].toLowerCase()) {
+	const applyLetter = (char) => {
+		if (finished || nLetter >= result.length) return
+
+		if (char.toLowerCase() === result[nLetter].toLowerCase()) {
 			letters[nLetter].style.color = "#3c5aa6"
 			letters[nLetter].classList.remove('wrong')
 			nLetter++
@@ -186,23 +226,45 @@ async function generateQTE(difficulty) {
 			letters.forEach(l => {
 				l.style.color = "rgb(14, 212, 14)"
 			})
-			document.removeEventListener('keydown', handleKeydown)
-
+			finished = true
 		} else if (fails - 1 == failsN) {
 			letters[nLetter].classList.remove('wrong')
 			letters.forEach(l => {
 				l.classList.add("lose")
 			})
 			sLose = new Date().getTime() / 1000
-			document.removeEventListener('keydown', handleKeydown)
+			finished = true
 		}
 	}
 
-	requestAnimationFrame(() => qteInDom.focus())
-	document.addEventListener("keydown", handleKeydown)
+	const qteInput = document.createElement('input')
+	qteInput.type = 'text'
+	qteInput.setAttribute('autocomplete', 'off')
+	qteInput.setAttribute('autocapitalize', 'none')
+	qteInput.setAttribute('autocorrect', 'off')
+	qteInput.setAttribute('spellcheck', 'false')
+	qteInput.setAttribute('aria-label', 'Tapez les lettres affichées')
+	qteInput.style.cssText = 'position:fixed;top:50%;left:50%;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;'
+	qte.appendChild(qteInput)
+
+	qteInput.addEventListener('input', () => {
+		const typed = qteInput.value
+		qteInput.value = ''
+		for (const ch of typed) applyLetter(ch)
+	})
+
+	letters.forEach((letterEl) => {
+		letterEl.style.cursor = 'pointer'
+		letterEl.addEventListener('pointerdown', (e) => {
+			e.preventDefault()
+			applyLetter(letterEl.innerText)
+			qteInput.focus()
+		})
+	})
+
+	qteInput.focus()
 	return new Promise(resolve => {
 		setTimeout(() => {
-			document.removeEventListener('keydown', handleKeydown)
 			document.querySelector('.qte').remove()
 			if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus()
 			resolve([new Date().getTime() / 1000, sLose, sWin])

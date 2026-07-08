@@ -347,6 +347,41 @@ body .qte .qte-letter {
   font-family: "Pokemon";
 }
 
+@media (max-width: 520px) {
+  body .qte {
+    width: 92vw;
+    height: 110px;
+    padding: 0 12px;
+  }
+  body .qte .qte-letter {
+    font-size: 32px;
+  }
+
+  body .playground #playground__captured__toggle:checked ~ .playground__captured .captured__pokemons,
+  body .playground #playground__shop__toggle:checked ~ .playground__shop .shop__pokemons {
+    width: calc(100vw - 4rem);
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  body .playground #playground__captured__toggle:checked ~ .playground__captured .captured__pokemons .captured__pokemons__ul,
+  body .playground #playground__shop__toggle:checked ~ .playground__shop .shop__pokemons .shop__pokemons__ul {
+    height: 60vh;
+  }
+
+  body .playground .pokedex,
+  body .playground #pokemonCard,
+  body .playground .leaderboard {
+    padding: 1rem;
+    max-width: calc(100vw - 2rem);
+    max-height: 85vh;
+    box-sizing: border-box;
+  }
+  body .playground .pokedex .pokedex__pokemons__ul,
+  body .playground .leaderboard .leaderboard__pokemons__ul {
+    width: 100%;
+  }
+}
+
 .lose {
   color: red !important;
   animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both 2;
