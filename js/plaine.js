@@ -10,24 +10,28 @@ function uuidv4() {
 	)
 }
 
-async function summonPokemon() {
-	// let pokemon = document.createElement('img')
-	// pokemon.src = '/assets/images/placeholders/1.png'
+const wildSpriteUrl = (id, shiny) =>
+	`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${shiny ? 'shiny/' : ''}${id}.png`
 
+async function summonPokemon() {
 	let pokemon = document.createElement('div')
 	pokemon.style.height = '96px'
 	pokemon.style.width = '96px'
 	let pokemonId = (getRandomInt(151) + 1).toString()
-	let data = await fetch('https://pokeapi.co/api/v2/pokemon/' + pokemonId)
-	let pkmData = await data.json()
-	await (Math.random() > 0.8) ? pokemon.style.background = `url(\'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemonId}.png\')` : pokemon.style.background = `url(\'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png\')`
 
+	const list = await getPokedexList()
+	const entry = list.find(p => p.id === pokemonId) || { id: pokemonId, name: `pokemon-${pokemonId}` }
+	const shiny = Math.random() > 0.8
+	const pkmData = { id: entry.id, name: entry.name, sprites: { front_default: wildSpriteUrl(pokemonId, false) } }
+
+	pokemon.style.background = `url('${wildSpriteUrl(pokemonId, shiny)}')`
 	pokemon.classList = 'pokemon'
+	pokemon.setAttribute('role', 'img')
+	pokemon.setAttribute('aria-label', entry.name)
 	pokemon.style.top = `${(getRandomInt(playground.clientHeight - 96) / playground.clientHeight) * 100}%`
 	pokemon.style.left = `${(getRandomInt(playground.clientWidth - 96) / playground.clientWidth) * 100}%`
 
 	pokemon.addEventListener("dragover", (event) => {
-		// prevent default to allow drop
 		event.preventDefault()
 	}, false)
 
@@ -49,46 +53,24 @@ async function summonPokemon() {
 	playground.appendChild(pokemon)
 }
 
-function AddPokemonToPc() {
-	// for dev only
-	let pokemonId = '395'
-	let pokemonSellPriceBase = 100
-	// for dev only
-
-	let pokemonEl = document.createElement('img')
-	(Math.random() > 0.8) ? pokemonEl.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemonId}.png` : pokemonEl.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`
-
-	pokemonEl.addEventListener('click', () => {
-		user.balance += pokemonSellPriceBase
-		pokemonEl.remove()
-		console.log('user balance', user.balance)
-	})
-
-	pc.appendChild(pokemonEl)
-
-}
-
 function reloadBall() {
 	let ballsArray = []
 	user.upgrade.balls.reverse().forEach(ball => {
 		for (let i = 0; i < ball.lvl * 5; i++) ballsArray.push(ball)
 	})
-	console.log(ballsArray)
-
 
 	let ballReturn = ballsArray[getRandomInt(99)]
 	let ballEl = document.createElement('img')
 	ballEl.classList = "ball"
 	ballEl.src = ballReturn.sprite
+	ballEl.alt = ballReturn.name
 	ballEl.draggable = true
 	ballEl.id = 'A' + uuidv4()
 
 	ballEl.addEventListener("dragstart", (event) => {
-		// store a ref. on the dragged elem
 		dragged = event.target
-		ballDiff = ballReturn.difficulty	// make it half transparent
+		ballDiff = ballReturn.difficulty
 		event.target.classList.add("dragging")
-		// event.dataTransfer.setData('text/plain', ballEl.id)
 		dragId = ballEl.id
 	})
 
@@ -96,23 +78,47 @@ function reloadBall() {
 		ballEl.style.top = 'auto'
 	})
 
-	// ballEl.addEventListener("mousedown", (event) => {
-	// 	isDragging = true
-	// 	ballEl.style.pointerEvents = "none"
-	// 	console.log(isDragging)
-	// })
-	// window.addEventListener("mouseup", (event) => {
-	// 	isDragging = false
-	// 	ballEl.style.pointerEvents = "auto"
-	// 	console.log(isDragging)
-	// })
-	// window.addEventListener('mousemove', function(event) {
-	// 	if (isDragging) {
-	// 		console.log('drag')
-	// 		ballEl.style.top = event.clientY - 48 + 'px'
-	// 		ballEl.style.left = event.clientX - 48 + 'px'
-	// 	}
-	//   })
+	ballEl.style.touchAction = 'none'
+	let touchDragging = false
+
+	const resetBallPosition = () => {
+		ballEl.style.position = ''
+		ballEl.style.left = ''
+		ballEl.style.top = ''
+	}
+
+	ballEl.addEventListener("touchstart", (event) => {
+		dragged = ballEl
+		ballDiff = ballReturn.difficulty
+		dragId = ballEl.id
+		touchDragging = true
+		ballEl.classList.add("dragging")
+	}, { passive: true })
+
+	ballEl.addEventListener("touchmove", (event) => {
+		if (!touchDragging) return
+		event.preventDefault()
+		const touch = event.touches[0]
+		ballEl.style.position = 'fixed'
+		ballEl.style.left = `${touch.clientX - ballEl.offsetWidth / 2}px`
+		ballEl.style.top = `${touch.clientY - ballEl.offsetHeight / 2}px`
+	}, { passive: false })
+
+	ballEl.addEventListener("touchend", (event) => {
+		if (!touchDragging) return
+		touchDragging = false
+		ballEl.classList.remove("dragging")
+		const touch = event.changedTouches[0]
+		ballEl.style.pointerEvents = 'none'
+		const target = document.elementFromPoint(touch.clientX, touch.clientY)
+		ballEl.style.pointerEvents = ''
+		resetBallPosition()
+		const pokemonEl = target && target.closest('.pokemon')
+		if (pokemonEl) {
+			pokemonEl.dispatchEvent(new Event('drop'))
+		}
+	})
+
 	playground.appendChild(ballEl)
 }
 
@@ -120,7 +126,6 @@ const playground = document.querySelector('.playground')
 const pc = document.querySelector('.captured__pokemons__ul')
 const pokedex = document.querySelector('.pokedex__pokemons__ul')
 const leaderboard = document.querySelector('.leaderboard__pokemons__ul')
-const ball = document.querySelector('.ball')
 let player
 let dragId
 let ballDiff
@@ -157,23 +162,9 @@ let user = {
 document.querySelector('#playground__captured__toggle').checked = false
 document.querySelector('#playground__pokedex__toggle').checked = false
 
-// for dev only
-const addPokemonBtn = document.querySelector('.addPokemonBtn')
-
-
 reloadBall()
 
 let dragged
-let isDragging = false
-
-
-
-
-
-summonPokemon()
-
-
-// QTE
 
 async function generateQTE(difficulty) {
 	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -210,19 +201,18 @@ async function generateQTE(difficulty) {
 			break
 	}
 
-	//console.log(result)
-	const qteInDom = document.querySelector('.qte')
 	const letters = document.querySelectorAll('.qte-letter')
+	const previousFocus = document.activeElement
 	let nLetter = 0
 	let fails = 0
 	let sLose = 0
 	let sWin = 0
-	const handleKeydown = (e) => {
-		if (nLetter >= result.length || letters[nLetter].classList.contains('lose') || letters[nLetter].classList.contains('win')) {
-			return
-		}
+	let finished = false
 
-		if (e.key.toLowerCase() === result[nLetter].toLowerCase()) {
+	const applyLetter = (char) => {
+		if (finished || nLetter >= result.length) return
+
+		if (char.toLowerCase() === result[nLetter].toLowerCase()) {
 			letters[nLetter].style.color = "#3c5aa6"
 			letters[nLetter].classList.remove('wrong')
 			nLetter++
@@ -236,25 +226,47 @@ async function generateQTE(difficulty) {
 			letters.forEach(l => {
 				l.style.color = "rgb(14, 212, 14)"
 			})
-			document.removeEventListener('keydown', handleKeydown)
-
+			finished = true
 		} else if (fails - 1 == failsN) {
 			letters[nLetter].classList.remove('wrong')
 			letters.forEach(l => {
 				l.classList.add("lose")
 			})
 			sLose = new Date().getTime() / 1000
-			document.removeEventListener('keydown', handleKeydown)
+			finished = true
 		}
 	}
 
-	requestAnimationFrame(() => qteInDom.focus())
-	document.addEventListener("keydown", handleKeydown)
+	const qteInput = document.createElement('input')
+	qteInput.type = 'text'
+	qteInput.setAttribute('autocomplete', 'off')
+	qteInput.setAttribute('autocapitalize', 'none')
+	qteInput.setAttribute('autocorrect', 'off')
+	qteInput.setAttribute('spellcheck', 'false')
+	qteInput.setAttribute('aria-label', 'Tapez les lettres affichées')
+	qteInput.style.cssText = 'position:fixed;top:50%;left:50%;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;'
+	qte.appendChild(qteInput)
+
+	qteInput.addEventListener('input', () => {
+		const typed = qteInput.value
+		qteInput.value = ''
+		for (const ch of typed) applyLetter(ch)
+	})
+
+	letters.forEach((letterEl) => {
+		letterEl.style.cursor = 'pointer'
+		letterEl.addEventListener('pointerdown', (e) => {
+			e.preventDefault()
+			applyLetter(letterEl.innerText)
+			qteInput.focus()
+		})
+	})
+
+	qteInput.focus()
 	return new Promise(resolve => {
 		setTimeout(() => {
-			document.removeEventListener('keydown', handleKeydown)
 			document.querySelector('.qte').remove()
-			//console.log('temps écoulé')
+			if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus()
 			resolve([new Date().getTime() / 1000, sLose, sWin])
 		}, timer)
 	})
@@ -263,8 +275,5 @@ async function generateQTE(difficulty) {
 
 async function resultsQTE(diff) {
 	const cs = await generateQTE(diff)
-	console.log(cs)
 	return !(cs[1] != 0 || cs[2] == 0 || cs[2] > cs[0])
 }
-
-

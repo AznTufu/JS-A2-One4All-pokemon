@@ -3,11 +3,43 @@ const fs = require('fs')
 const path = require('path')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
+const compression = require('compression')
+const rateLimit = require('express-rate-limit')
 const Database = require('better-sqlite3')
 
+process.on('unhandledRejection', (err) => console.error('unhandledRejection:', err))
+process.on('uncaughtException', (err) => console.error('uncaughtException:', err))
+
+let Pyroscope = null
+if (process.env.PYROSCOPE_SERVER) {
+  try {
+    Pyroscope = require('@pyroscope/nodejs')
+    Pyroscope.init({
+      serverAddress: process.env.PYROSCOPE_SERVER,
+      appName: 'poke-bicrave',
+      basicAuthUser: process.env.PYROSCOPE_USER,
+      basicAuthPassword: process.env.PYROSCOPE_API_KEY,
+      tags: { env: process.env.NODE_ENV || 'dev' },
+      wall: { collectCpuTime: true },
+    })
+    Pyroscope.start()
+    console.log('Pyroscope: profiling continu activé')
+  } catch (err) {
+    Pyroscope = null
+    console.warn('Pyroscope demandé mais @pyroscope/nodejs absent — profiling désactivé')
+  }
+}
+
 const app = express()
+app.set('trust proxy', 1)
+app.disable('x-powered-by')
+
 const PORT = process.env.PORT || 3000
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me'
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('JWT_SECRET manquant en production — arrêt.')
+  process.exit(1)
+}
 const dbDir = process.env.DB_DIR || path.join(__dirname, 'data')
 const dbPath = path.join(dbDir, 'poke-bicrave.sqlite')
 
@@ -26,8 +58,43 @@ db.exec(`
   )
 `)
 
+const SEED_USERS = parseInt(process.env.SEED_USERS || '0', 10)
+if (SEED_USERS > 0) {
+  const { c } = db.prepare('SELECT COUNT(*) AS c FROM users').get()
+  if (c < SEED_USERS) {
+    const passwordHash = bcrypt.hashSync('seed-password', 10)
+    const makeData = () => {
+      const count = Math.floor(Math.random() * 60)
+      const seen = new Set()
+      while (seen.size < count) seen.add(Math.floor(Math.random() * 151) + 1)
+      const pokedex = [...seen].map((id) => ({
+        id: String(id),
+        name: `pokemon-${id}`,
+        url: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
+      }))
+      const pc = pokedex.flatMap((p) => Array(1 + Math.floor(Math.random() * 4)).fill(p.id))
+      return JSON.stringify({ balance: Math.floor(Math.random() * 5000), upgrade: { balls: [] }, pokemons: { pc, pokedex } })
+    }
+    const insert = db.prepare('INSERT OR IGNORE INTO users (username, password_hash, data) VALUES (?, ?, ?)')
+    db.transaction(() => {
+      for (let i = c; i < SEED_USERS; i++) insert.run(`seed_user_${i}`, passwordHash, makeData())
+    })()
+    console.log(`Seed: base peuplée à ${SEED_USERS} joueurs.`)
+  }
+}
+
+app.use(compression({ threshold: 1024 }))
 app.use(express.json({ limit: '1mb' }))
-app.use(express.static(__dirname))
+
+const STATIC_OPTS = { maxAge: '30d' }
+app.use('/assets', express.static(path.join(__dirname, 'assets'), STATIC_OPTS))
+app.use('/css', express.static(path.join(__dirname, 'css'), STATIC_OPTS))
+app.use('/js', express.static(path.join(__dirname, 'js'), { maxAge: '1h' }))
+app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'index.html')))
+
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false })
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false })
+app.use('/api/', apiLimiter)
 
 const defaultUserData = () => ({
   balance: 0,
@@ -99,7 +166,7 @@ function authRequired(req, res, next) {
   }
 }
 
-app.post('/api/register', (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
   const username = String(req.body.username || '').trim()
   const password = String(req.body.password || '')
 
@@ -112,7 +179,7 @@ app.post('/api/register', (req, res) => {
     return res.status(409).json({ error: 'user_exists' })
   }
 
-  const passwordHash = bcrypt.hashSync(password, 10)
+  const passwordHash = await bcrypt.hash(password, 10)
   const data = JSON.stringify(defaultUserData())
   const info = db.prepare('INSERT INTO users (username, password_hash, data) VALUES (?, ?, ?)').run(username, passwordHash, data)
   const user = db.prepare('SELECT id, username, data, created_at FROM users WHERE id = ?').get(info.lastInsertRowid)
@@ -124,7 +191,7 @@ app.post('/api/register', (req, res) => {
   })
 })
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
   const username = String(req.body.username || '').trim()
   const password = String(req.body.password || '')
 
@@ -133,7 +200,8 @@ app.post('/api/login', (req, res) => {
   }
 
   const user = db.prepare('SELECT id, username, password_hash, data, created_at FROM users WHERE username = ?').get(username)
-  if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+  const ok = user && (await bcrypt.compare(password, user.password_hash))
+  if (!ok) {
     return res.status(401).json({ error: 'invalid_credentials' })
   }
 
@@ -157,6 +225,7 @@ app.put('/api/me', authRequired, (req, res) => {
   const nextData = req.body.data || currentData
 
   db.prepare('UPDATE users SET data = ? WHERE id = ?').run(JSON.stringify(nextData), req.user.id)
+  invalidateLeaderboard()
 
   const updatedUser = db.prepare('SELECT id, username, data, created_at FROM users WHERE id = ?').get(req.user.id)
 
@@ -167,31 +236,37 @@ app.put('/api/me', authRequired, (req, res) => {
   })
 })
 
+const LEADERBOARD_TTL_MS = 60_000
+let leaderboardCache = { body: null, expiresAt: 0 }
+const invalidateLeaderboard = () => {
+  leaderboardCache = { body: null, expiresAt: 0 }
+}
+
+function buildLeaderboard() {
+  const rows = db.prepare(`
+    SELECT username,
+           COALESCE(json_array_length(data, '$.pokemons.pokedex'), 0) AS pokedexCount
+    FROM users
+    ORDER BY pokedexCount DESC
+    LIMIT 50
+  `).all()
+  return JSON.stringify({
+    records: rows.map((r, index) => ({ id: index + 1, fields: { username: r.username, pokedexCount: r.pokedexCount } })),
+  })
+}
+
 app.get('/api/leaderboard', (_req, res) => {
-  const users = db.prepare('SELECT id, username, data, created_at FROM users').all()
-  const leaderboard = users
-    .map((user) => {
-      let parsedData = defaultUserData()
-      try {
-        parsedData = JSON.parse(user.data)
-      } catch (error) {
-        parsedData = defaultUserData()
-      }
-
-      return {
-        name: user.username,
-        data: parsedData,
-      }
-    })
-    .sort((a, b) => a.data.pokemons.pokedex.length - b.data.pokemons.pokedex.length)
-
-  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
-  res.json({ records: leaderboard.map((entry, index) => ({ id: index + 1, fields: { username: entry.name, data: JSON.stringify(entry.data) } })) })
+  const hit = leaderboardCache.body && Date.now() < leaderboardCache.expiresAt
+  if (!hit) {
+    leaderboardCache = { body: buildLeaderboard(), expiresAt: Date.now() + LEADERBOARD_TTL_MS }
+  }
+  res.set('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300')
+  res.set('X-Cache', hit ? 'HIT' : 'MISS')
+  res.type('application/json').send(leaderboardCache.body)
 })
 
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'))
-})
+app.use('/api', (_req, res) => res.status(404).json({ error: 'not_found' }))
+app.use((_req, res) => res.status(404).type('text/plain').send('Not Found'))
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)

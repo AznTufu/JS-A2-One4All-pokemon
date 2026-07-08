@@ -1,77 +1,43 @@
-let url = "https://pokeapi.co/api/v2/pokemon?limit=151"
+"use strict"
 
-async function getPokemon(url) {
-    const response = await fetch(url)
+const POKEDEX_LIMIT = 151
+const POKEDEX_LIST_URL = `https://pokeapi.co/api/v2/pokemon?limit=${POKEDEX_LIMIT}`
+const POKEDEX_CACHE_KEY = 'pokedex_gen1_v1'
+const spriteUrl = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+
+async function getPokedexList() {
+    const cached = localStorage.getItem(POKEDEX_CACHE_KEY)
+    if (cached) return JSON.parse(cached)
+
+    const response = await fetch(POKEDEX_LIST_URL)
     const data = await response.json()
-    return data
+    const list = data.results.map((p) => {
+        const id = p.url.split('/')[6]
+        return { id, name: p.name }
+    })
+    localStorage.setItem(POKEDEX_CACHE_KEY, JSON.stringify(list))
+    return list
 }
 
 async function printPokemon() {
-    const response = await fetch(url)
-    const data = await response.json()
-    const pokemons = data.results
-    let html = ''
-    await Promise.all(pokemons.map(async function(pokemon) {
-        const url = pokemon.url
-        const pokeData = await getPokemon(url)
-        html +=
-            `
-            <div class="card">
-                <img src="${pokeData.sprites.front_default}" alt="${pokeData.name}">
-                <span>${pokeData.id}</span>
-                <h2>${pokeData.name}</h2>
-                <span>Height ${pokeData.height}</span>
-                <span>Weight ${pokeData.weight}</span>
-                <div>${pokeData.types[0].type.name}</div>
-            </div>
-            `
-    }))
+    const list = await getPokedexList()
+    const html = list.map(({ id, name }) => `
+        <div class="card">
+            <img loading="lazy" src="${spriteUrl(id)}" alt="${name}">
+            <span>${id}</span>
+            <h3>${name}</h3>
+        </div>
+    `).join('')
     document.getElementById('pokemonCard').innerHTML = html
 }
 
-document.querySelector('.btnPokedexAll').addEventListener('click', (e)=> {
+let pokedexLoaded = false
+document.querySelector('.btnPokedexAll').addEventListener('click', () => {
+    if (!pokedexLoaded) {
+        printPokemon()
+        pokedexLoaded = true
+    }
     document.querySelector('#pokemonCard').classList.toggle('show')
 })
-printPokemon()
 
-async function printRandomPokemon() {
-    const randomNum = Math.floor(Math.random() * 151) + 1
-    const url = `https://pokeapi.co/api/v2/pokemon/${randomNum}`
-    const pokeData = await getPokemon(url)
-    const randomPokemon = document.getElementById("randomPokemon")
-
-    // Create new div foreach Pokemon
-    const newPokemon = document.createElement('div')
-    newPokemon.classList.add("pokemon-card")
-    randomPokemon.appendChild(newPokemon)
-
-    let shiny
-    // Add image 
-    const pokemonImg = document.createElement('img')
-    if (Math.random() < 0.2) {
-        pokemonImg.src = pokeData.sprites.front_shiny
-        shiny = true
-    }
-    else{
-        pokemonImg.src = pokeData.sprites.front_default
-        shiny = false
-    }
-    newPokemon.appendChild(pokemonImg)
-
-    // Add name to div
-    const pokemonName = document.createElement('h2')
-    if (shiny) {
-        pokemonName.innerHTML = pokeData.name + " (Shiny)"
-    }
-    else{
-        pokemonName.innerHTML = pokeData.name
-    }
-    newPokemon.appendChild(pokemonName)
-
-
-    //random position
-    newPokemon.style.position = "absolute"
-    newPokemon.style.left = Math.floor(Math.random() * (window.innerWidth - newPokemon.clientWidth)) + 'px'
-    newPokemon.style.top = Math.floor(Math.random() * (window.innerHeight - newPokemon.clientHeight)) + 'px'
-}
 document.querySelector('.btprintrandompokeonwindow').addEventListener('click', summonPokemon)

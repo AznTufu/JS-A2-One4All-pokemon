@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
     <meta charset="UTF-8">
@@ -10,108 +10,93 @@
 </head>
 
 <body>
+    <h1 class="sr-only">Poke Bicrave</h1>
 
     <div class="log-bg">
         <div class="logs">
             <div class="register">
-                <h2>Register</h2>
+                <h2>Inscription</h2>
                 <div>
-                    <label for="register__username"></label>
-                    <input type="text" name="username" id="register__username">
+                    <label for="register__username">Nom d'utilisateur</label>
+                    <input type="text" name="username" id="register__username" autocomplete="username">
                 </div>
                 <div>
-                    <label for="register__password"></label>
-                    <input type="text" name="username" id="register__password">
+                    <label for="register__password">Mot de passe</label>
+                    <input type="password" name="password" id="register__password" autocomplete="new-password">
                 </div>
-                <button id="register__register">Register</button>
-                <span class="error"></span>
+                <button id="register__register">S'inscrire</button>
+                <span class="error" role="alert"></span>
             </div>
             <hr>
             <div class="login">
-                <h2>Login</h2>
+                <h2>Connexion</h2>
                 <div>
-                    <label for="login__username"></label>
-                    <input type="text" name="username" id="login__username">
+                    <label for="login__username">Nom d'utilisateur</label>
+                    <input type="text" name="username" id="login__username" autocomplete="username">
                 </div>
                 <div>
-                    <label for="login__password"></label>
-                    <input type="text" name="username" id="login__password">
+                    <label for="login__password">Mot de passe</label>
+                    <input type="password" name="password" id="login__password" autocomplete="current-password">
                 </div>
-                <button id="login__login">login</button>
-                <span class="error"></span>
+                <button id="login__login">Se connecter</button>
+                <span class="error" role="alert"></span>
             </div>
         </div>
     </div>
 
-    <div class="playground">
+    <main class="playground">
         <button class="btprintrandompokeonwindow">Faire apparaitre un pokemon aléatoire</button>
 
         <input type="radio" id="playground__captured__toggle" style="display: none;" name="menus">
         <input type="radio" id="playground__captured__detoggle" style="display: none;" name="menus">
         <div class="playground__captured">
             <div class="captured__pokemons">
-                <h2>pokemons captured</h2>
+                <h2>Pokémon capturés</h2>
                 <div class="captured__pokemons__ul"></div>
             </div>
             <label for="playground__captured__toggle">
-                <img src="/assets/images/balls/Honor_Ball.png" alt="" height="64" draggable="true">
+                <img src="/assets/images/balls/Honor_Ball.png" alt="Ouvrir les Pokémon capturés" height="64" draggable="true">
             </label>
-            <label for="playground__captured__detoggle"></label>
+            <label for="playground__captured__detoggle" aria-label="Fermer le panneau"></label>
         </div>
 
         <input type="radio" id="playground__shop__toggle" style="display: none;" name="menus">
         <input type="radio" id="playground__shop__detoggle" style="display: none;" name="menus">
         <div class="playground__shop">
             <div class="shop__pokemons">
-                <h2>pokemons shop</h2>
+                <h2>Boutique</h2>
                 <div class="shop__pokemons__ul">
-                    <div class="item item--SuperBall">
-                        <img src="" alt="">
-                    </div>
-                    <div class="item item--HyperBall">
-                        <img src="" alt="">
-                    </div>
+                    <div class="item item--SuperBall"></div>
+                    <div class="item item--HyperBall"></div>
                 </div>
             </div>
             <label for="playground__shop__toggle">
-                <img src="/assets/images/balls/Total_Soin.png" alt="" height="64" draggable="true">
+                <img src="/assets/images/balls/Total_Soin.png" alt="Ouvrir la boutique" height="64" draggable="true">
             </label>
-            <label for="playground__shop__detoggle"></label>
+            <label for="playground__shop__detoggle" aria-label="Fermer le panneau"></label>
         </div>
 
         <label for="playground__pokedex__toggle" id="pokedexBtn">
-            <img src="/assets/images/726px-Pokédex-DP.png" alt="" height="48" width="48">
+            <img src="/assets/images/pokedex-icon.webp" alt="Ouvrir le Pokédex" height="48" width="48">
         </label>
         <input type="checkbox" id="playground__pokedex__toggle" style="display: none;" name="menus">
         <div class="pokedex">
-            <h2>Pokedex</h2>
+            <h2>Pokédex</h2>
             <ul class="pokedex__pokemons__ul"></ul>
         </div>
 
         <label for="playground__leaderboard__toggle" id="leaderboardBtn">
-            <img src="/assets/images/ruban.png" alt="" height="48" width="48">
+            <img src="/assets/images/ruban.png" alt="Ouvrir le classement" height="48" width="48">
         </label>
         <input type="checkbox" id="playground__leaderboard__toggle" style="display: none;" name="menus">
         <div class="leaderboard">
-            <h2>leaderboard</h2>
+            <h2>Classement</h2>
             <ul class="leaderboard__pokemons__ul"></ul>
         </div>
 
-
-
         <div id="pokemonCard"></div>
         <button class="btnPokedexAll">Pokedex</button>
-        <!-- <img src="/assets/images/balls/PokeBall.png" alt="" class="ball" height="64" draggable="true"> -->
-        <!-- <div class="ball" draggable="true"></div> -->
-        <!-- <div class="shop"></div> -->
-                
-        <div id="divrandomPokemon">
-            <img id="randomPokemonImg">
-            <div id="randomPokemon">
-            </div>
-        </div>
-
-    </div>
+    </main>
     <script src="./js/Player.js"></script>
     <script src="./js/plaine.js"></script>
     <script src="./js/leaderboard.js"></script>

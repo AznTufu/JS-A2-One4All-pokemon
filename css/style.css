@@ -10,7 +10,26 @@
 @font-face {
   font-family: "Pokemon";
   src: url("/css/Pokemon-Hollow.ttf");
+  font-display: swap;
 }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 3px solid #3c5aa6;
+  outline-offset: 2px;
+}
+
 body {
   min-height: 100vh;
 }
@@ -64,7 +83,7 @@ body .playground .btprintrandompokeonwindow {
 body .playground .playground__captured {
   overflow: hidden;
   transition: 0.5s;
-  transition-delay: 0;
+  transition-delay: 0s;
   position: absolute;
   top: 2rem;
   right: 2rem;
@@ -72,7 +91,7 @@ body .playground .playground__captured {
 }
 body .playground .playground__captured .captured__pokemons {
   transition: 0.5s;
-  transition-delay: 0;
+  transition-delay: 0s;
   padding: 1rem 0rem;
   border-radius: 2rem 0rem 2rem 2rem;
   background: #ffffff;
@@ -84,7 +103,7 @@ body .playground .playground__captured .captured__pokemons h2 {
 }
 body .playground .playground__captured .captured__pokemons .captured__pokemons__ul {
   transition: 0.5s;
-  transition-delay: 0;
+  transition-delay: 0s;
   height: 0px;
   overflow-y: scroll;
 }
@@ -126,7 +145,7 @@ body .playground #playground__captured__toggle:checked ~ .playground__captured l
 }
 body .playground .playground__shop {
   transition: 0.5s;
-  transition-delay: 0;
+  transition-delay: 0s;
   position: absolute;
   top: 6.5rem;
   right: 2rem;
@@ -135,7 +154,7 @@ body .playground .playground__shop {
 }
 body .playground .playground__shop .shop__pokemons {
   transition: 0.5s;
-  transition-delay: 0;
+  transition-delay: 0s;
   padding: 1rem 0rem;
   border-radius: 2rem 2rem 2rem 2rem;
   background: #ffffff;
@@ -150,7 +169,7 @@ body .playground .playground__shop .shop__pokemons h2 {
 }
 body .playground .playground__shop .shop__pokemons .shop__pokemons__ul {
   transition: 0.5s;
-  transition-delay: 0;
+  transition-delay: 0s;
   height: 0px;
 }
 body .playground .playground__shop label {
@@ -217,7 +236,7 @@ body .playground .pokedex {
   overflow-y: scroll;
   z-index: 10;
 }
-body .playground .pokedex .pokdex__pokemons__ul {
+body .playground .pokedex .pokedex__pokemons__ul {
   width: 24rem;
 }
 body .playground .btnPokedexAll {
@@ -317,21 +336,69 @@ body .qte {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px 0 20px;
-  outline: none;
   z-index: 11;
+}
+body .qte:focus-visible {
+  outline: 3px solid #3c5aa6;
+  outline-offset: 2px;
 }
 body .qte .qte-letter {
   font-size: 50px;
   font-family: "Pokemon";
 }
 
+@media (max-width: 520px) {
+  body .qte {
+    width: 92vw;
+    height: 110px;
+    padding: 0 12px;
+  }
+  body .qte .qte-letter {
+    font-size: 32px;
+  }
+
+  body .playground #playground__captured__toggle:checked ~ .playground__captured .captured__pokemons,
+  body .playground #playground__shop__toggle:checked ~ .playground__shop .shop__pokemons {
+    width: calc(100vw - 4rem);
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  body .playground #playground__captured__toggle:checked ~ .playground__captured .captured__pokemons .captured__pokemons__ul,
+  body .playground #playground__shop__toggle:checked ~ .playground__shop .shop__pokemons .shop__pokemons__ul {
+    height: 60vh;
+  }
+
+  body .playground .pokedex,
+  body .playground #pokemonCard,
+  body .playground .leaderboard {
+    padding: 1rem;
+    max-width: calc(100vw - 2rem);
+    max-height: 85vh;
+    box-sizing: border-box;
+  }
+  body .playground .pokedex .pokedex__pokemons__ul,
+  body .playground .leaderboard .leaderboard__pokemons__ul {
+    width: 100%;
+  }
+}
+
 .lose {
   color: red !important;
-  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both infinite;
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both 2;
 }
 
 .wrong {
-  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both infinite;
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @keyframes shake {
@@ -349,4 +416,3 @@ body .qte .qte-letter {
   }
 }
 
-/*# sourceMappingURL=style.css.map */
